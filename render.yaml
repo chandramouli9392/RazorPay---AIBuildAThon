@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: razorpay-ai-recovery
+    env: python
+    buildCommand: pip install --upgrade pip && pip install .
+    startCommand: uvicorn payment_recovery.service:app --host 0.0.0.0 --port $PORT
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DEMO_MODE
+        value: "true"
+      - key: PYTHON_VERSION
+        value: "3.11.9"

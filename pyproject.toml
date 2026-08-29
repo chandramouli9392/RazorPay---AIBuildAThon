@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "payment-recovery-engine"
+version = "0.1.0"
+description = "Deterministic payment failure classification and AI revenue recovery engine"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.110.0",
+  "pydantic>=2.5.0",
+  "uvicorn>=0.25.0",
+  "razorpay>=1.4.1",
+  "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.27.0",
+  "psycopg[binary]>=3.1.0",
+  "pytest>=8.0.0",
+  "ruff>=0.4.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]

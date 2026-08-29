@@ -1,0 +1,156 @@
+{
+  "name": "Payment Recovery - Atomic Retry Worker",
+  "active": false,
+  "settings": {"executionOrder": "v1"},
+  "nodes": [
+    {
+      "id": "retry-schedule",
+      "name": "Every Minute",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "parameters": {"rule": {"interval": [{"field": "minutes", "minutesInterval": 1}]}}
+    },
+    {
+      "id": "claim-due-retries",
+      "name": "Atomically Claim Due Retries",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [240, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM claim_due_retries($1, $2, $3)",
+        "options": {"queryReplacement": "={{ [$execution.id, 50, 300] }}"}
+      },
+      "credentials": {"postgres": {"name": "Payment Recovery PostgreSQL"}}
+    },
+    {
+      "id": "check-payment-intent",
+      "name": "Recheck Provider State",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 0],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.stripe.com/v1/payment_intents/{{ $json.provider_payment_intent_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "stripeApi",
+        "options": {}
+      },
+      "credentials": {"stripeApi": {"name": "Stripe Test Mode"}}
+    },
+    {
+      "id": "terminal-check",
+      "name": "Already Terminal?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [720, 0],
+      "parameters": {
+        "conditions": {"options": {"caseSensitive": true}, "combinator": "or", "conditions": [
+          {"leftValue": "={{ $json.status }}", "rightValue": "succeeded", "operator": {"type": "string", "operation": "equals"}},
+          {"leftValue": "={{ $json.status }}", "rightValue": "canceled", "operator": {"type": "string", "operation": "equals"}}
+        ]}
+      }
+    },
+    {
+      "id": "confirm-payment-intent",
+      "name": "Confirm with Idempotency Key",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 120],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.stripe.com/v1/payment_intents/{{ $('Atomically Claim Due Retries').item.json.provider_payment_intent_id }}/confirm",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "stripeApi",
+        "sendHeaders": true,
+        "headerParameters": {"parameters": [{
+          "name": "Idempotency-Key",
+          "value": "={{ 'recovery:' + $('Atomically Claim Due Retries').item.json.id + ':' + ($('Atomically Claim Due Retries').item.json.attempts_completed + 1) }}"
+        }]},
+        "options": {"response": {"response": {"neverError": true}}}
+      },
+      "credentials": {"stripeApi": {"name": "Stripe Test Mode"}}
+    },
+    {
+      "id": "close-stale-claim",
+      "name": "Close Stale Claim",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [980, -120],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT mark_recovery_terminal($1::uuid, $2, $3)",
+        "options": {"queryReplacement": "={{ [$('Atomically Claim Due Retries').item.json.id, $('Atomically Claim Due Retries').item.json.version, $json.status === 'succeeded' ? 'recovered' : 'cancelled'] }}"}
+      },
+      "credentials": {"postgres": {"name": "Payment Recovery PostgreSQL"}}
+    },
+    {
+      "id": "retry-succeeded",
+      "name": "Retry Succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1220, 120],
+      "parameters": {
+        "conditions": {"options": {"caseSensitive": true}, "combinator": "and", "conditions": [
+          {"leftValue": "={{ $json.status }}", "rightValue": "succeeded", "operator": {"type": "string", "operation": "equals"}}
+        ]}
+      }
+    },
+    {
+      "id": "mark-retry-recovered",
+      "name": "Record Successful Retry",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1460, 20],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH attempt AS (INSERT INTO retry_attempts (recovery_case_id, attempt_number, provider_idempotency_key, status, finished_at) VALUES ($1::uuid, $2, $3, 'succeeded', now()) ON CONFLICT (recovery_case_id, attempt_number) DO NOTHING) SELECT mark_recovery_terminal($1::uuid, $4, 'recovered')",
+        "options": {"queryReplacement": "={{ [$('Atomically Claim Due Retries').item.json.id, $('Atomically Claim Due Retries').item.json.attempts_completed + 1, 'recovery:' + $('Atomically Claim Due Retries').item.json.id + ':' + ($('Atomically Claim Due Retries').item.json.attempts_completed + 1), $('Atomically Claim Due Retries').item.json.version] }}"}
+      },
+      "credentials": {"postgres": {"name": "Payment Recovery PostgreSQL"}}
+    },
+    {
+      "id": "ask-policy-engine",
+      "name": "Recompute Policy After Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1460, 220],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.RECOVERY_ENGINE_URL + '/v1/decisions/stripe' }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ error_code: $json.last_payment_error?.code, decline_code: $json.last_payment_error?.decline_code, advice_code: $json.last_payment_error?.advice_code, attempts_completed: $('Atomically Claim Due Retries').item.json.attempts_completed + 1, occurred_at: new Date().toISOString() }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "persist-failed-retry",
+      "name": "Persist Failed Retry Decision",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1710, 220],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH attempt AS (INSERT INTO retry_attempts (recovery_case_id, attempt_number, provider_idempotency_key, status, provider_error_code, finished_at) VALUES ($1::uuid, $2, $3, 'failed', $4, now()) ON CONFLICT (recovery_case_id, attempt_number) DO NOTHING RETURNING 1) UPDATE recovery_cases SET attempts_completed = attempts_completed + 1, status = CASE WHEN $5::boolean THEN 'pending' WHEN $6::boolean THEN 'manual_review' ELSE 'exhausted' END, next_retry_at = $7::timestamptz, max_attempts = $8, lease_owner = NULL, lease_expires_at = NULL, version = version + 1, updated_at = now() WHERE id = $1::uuid AND version = $9 AND status = 'attempting' AND EXISTS (SELECT 1 FROM attempt)",
+        "options": {"queryReplacement": "={{ [$('Atomically Claim Due Retries').item.json.id, $('Atomically Claim Due Retries').item.json.attempts_completed + 1, 'recovery:' + $('Atomically Claim Due Retries').item.json.id + ':' + ($('Atomically Claim Due Retries').item.json.attempts_completed + 1), $('Confirm with Idempotency Key').item.json.last_payment_error?.decline_code ?? $('Confirm with Idempotency Key').item.json.last_payment_error?.code ?? 'unknown', $json.retry_allowed, $json.manual_review_required, $json.next_retry_at, $json.max_attempts, $('Atomically Claim Due Retries').item.json.version] }}"}
+      },
+      "credentials": {"postgres": {"name": "Payment Recovery PostgreSQL"}}
+    }
+  ],
+  "connections": {
+    "Every Minute": {"main": [[{"node": "Atomically Claim Due Retries", "type": "main", "index": 0}]]},
+    "Atomically Claim Due Retries": {"main": [[{"node": "Recheck Provider State", "type": "main", "index": 0}]]},
+    "Recheck Provider State": {"main": [[{"node": "Already Terminal?", "type": "main", "index": 0}]]},
+    "Already Terminal?": {"main": [[{"node": "Close Stale Claim", "type": "main", "index": 0}], [{"node": "Confirm with Idempotency Key", "type": "main", "index": 0}]]},
+    "Confirm with Idempotency Key": {"main": [[{"node": "Retry Succeeded?", "type": "main", "index": 0}]]},
+    "Retry Succeeded?": {"main": [[{"node": "Record Successful Retry", "type": "main", "index": 0}], [{"node": "Recompute Policy After Failure", "type": "main", "index": 0}]]},
+    "Recompute Policy After Failure": {"main": [[{"node": "Persist Failed Retry Decision", "type": "main", "index": 0}]]}
+  },
+  "meta": {
+    "evidence": "reference implementation",
+    "safety": "The database atomically claims work; Stripe state is rechecked; provider calls carry deterministic idempotency keys"
+  }
+}

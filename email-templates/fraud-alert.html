@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <h1>Internal payment security review</h1>
+    <p>Recovery case {{ recovery_case_id }} requires manual review.</p>
+    <ul>
+      <li>Provider code: {{ provider_failure_code }}</li>
+      <li>Payment intent: {{ payment_intent_id }}</li>
+      <li>Observed at: {{ observed_at }}</li>
+    </ul>
+    <p>Do not automatically retry or disclose provider fraud indicators to the customer.</p>
+  </body>
+</html>

@@ -1,0 +1,75 @@
+{
+  "name": "Payment Recovery - Verified Event Intake",
+  "active": false,
+  "settings": {"executionOrder": "v1"},
+  "nodes": [
+    {
+      "id": "verified-event-webhook",
+      "name": "Verified Engine Event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "payment-recovery/verified-event",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode"
+      },
+      "credentials": {
+        "httpHeaderAuth": {"name": "Recovery Engine Internal Auth"}
+      }
+    },
+    {
+      "id": "validate-contract",
+      "name": "Validate Engine Contract",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0],
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json;\nfor (const key of ['event_id', 'payment_intent_id', 'event_type']) {\n  if (typeof body[key] !== 'string' || body[key].length === 0) throw new Error(`Missing ${key}`);\n}\nif (body.event_type === 'payment_failed' && (!body.decision || typeof body.decision.retry_allowed !== 'boolean')) {\n  throw new Error('Missing deterministic policy decision');\n}\nreturn [{ json: body }];"
+      }
+    },
+    {
+      "id": "forward-decision",
+      "name": "Forward to Persistence",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_POLICY_DECISION_URL }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {"name": "Recovery Engine Internal Auth"}
+      }
+    },
+    {
+      "id": "respond-accepted",
+      "name": "Acknowledge Internal Event",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [720, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { accepted: true, event_id: $json.event_id } }}",
+        "options": {"responseCode": 202}
+      }
+    }
+  ],
+  "connections": {
+    "Verified Engine Event": {"main": [[{"node": "Validate Engine Contract", "type": "main", "index": 0}]]},
+    "Validate Engine Contract": {"main": [[{"node": "Forward to Persistence", "type": "main", "index": 0}]]},
+    "Forward to Persistence": {"main": [[{"node": "Acknowledge Internal Event", "type": "main", "index": 0}]]}
+  },
+  "meta": {
+    "evidence": "reference implementation",
+    "securityBoundary": "Stripe signatures are verified by the Python service against raw bytes before this internal authenticated webhook"
+  }
+}

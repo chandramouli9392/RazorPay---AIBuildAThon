@@ -1,0 +1,49 @@
+{
+  "name": "Payment Recovery - Daily Operational Report",
+  "active": false,
+  "settings": {"executionOrder": "v1", "timezone": "UTC"},
+  "nodes": [
+    {
+      "id": "daily-schedule",
+      "name": "Daily UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "parameters": {"rule": {"interval": [{"field": "days", "daysInterval": 1, "triggerAtHour": 9}]}}
+    },
+    {
+      "id": "aggregate-status",
+      "name": "Aggregate Operational Counts",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [240, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT status, failure_category, count(*)::integer AS case_count, sum(amount_minor)::bigint AS amount_minor FROM recovery_cases WHERE created_at >= now() - interval '1 day' GROUP BY status, failure_category ORDER BY status, failure_category",
+        "options": {}
+      },
+      "credentials": {"postgres": {"name": "Payment Recovery PostgreSQL"}}
+    },
+    {
+      "id": "send-report",
+      "name": "Send Evidence-Labeled Report",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [500, 0],
+      "parameters": {
+        "fromEmail": "={{ $env.RECOVERY_FROM_EMAIL }}",
+        "toEmail": "={{ $env.RECOVERY_REPORT_EMAIL }}",
+        "subject": "Payment recovery operational counts (not a benchmark)",
+        "emailFormat": "text",
+        "text": "={{ 'Reference implementation operational output. No production or client outcome is implied.\n\n' + JSON.stringify($input.all().map(i => i.json), null, 2) }}",
+        "options": {}
+      },
+      "credentials": {"smtp": {"name": "Payment Recovery SMTP"}}
+    }
+  ],
+  "connections": {
+    "Daily UTC": {"main": [[{"node": "Aggregate Operational Counts", "type": "main", "index": 0}]]},
+    "Aggregate Operational Counts": {"main": [[{"node": "Send Evidence-Labeled Report", "type": "main", "index": 0}]]}
+  },
+  "meta": {"evidence": "operational counts only; not a benchmark or client result"}
+}

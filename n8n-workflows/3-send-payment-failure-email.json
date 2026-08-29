@@ -1,0 +1,72 @@
+{
+  "name": "Payment Recovery - Deduplicated Notification",
+  "active": false,
+  "settings": {"executionOrder": "v1"},
+  "nodes": [
+    {
+      "id": "notification-webhook",
+      "name": "Notification Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "payment-recovery/notification",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived"
+      },
+      "credentials": {"httpHeaderAuth": {"name": "Recovery Engine Internal Auth"}}
+    },
+    {
+      "id": "claim-notification",
+      "name": "Claim Notification Once",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [240, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO notification_deliveries (recovery_case_id, notification_kind) VALUES ($1::uuid, $2) ON CONFLICT (recovery_case_id, notification_kind) DO NOTHING RETURNING id",
+        "options": {"queryReplacement": "={{ [$json.body.recovery_case_id, $json.body.notification_kind] }}"}
+      },
+      "credentials": {"postgres": {"name": "Payment Recovery PostgreSQL"}}
+    },
+    {
+      "id": "send-email",
+      "name": "Send Customer Action Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [500, 0],
+      "parameters": {
+        "fromEmail": "={{ $env.RECOVERY_FROM_EMAIL }}",
+        "toEmail": "={{ $('Notification Request').item.json.body.customer_email }}",
+        "subject": "={{ $('Notification Request').item.json.body.subject }}",
+        "emailFormat": "html",
+        "html": "={{ $('Notification Request').item.json.body.html }}",
+        "options": {}
+      },
+      "credentials": {"smtp": {"name": "Payment Recovery SMTP"}}
+    },
+    {
+      "id": "mark-sent",
+      "name": "Mark Notification Sent",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [760, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE notification_deliveries SET delivery_status = 'sent', sent_at = now() WHERE id = $1::uuid",
+        "options": {"queryReplacement": "={{ [$('Claim Notification Once').item.json.id] }}"}
+      },
+      "credentials": {"postgres": {"name": "Payment Recovery PostgreSQL"}}
+    }
+  ],
+  "connections": {
+    "Notification Request": {"main": [[{"node": "Claim Notification Once", "type": "main", "index": 0}]]},
+    "Claim Notification Once": {"main": [[{"node": "Send Customer Action Email", "type": "main", "index": 0}]]},
+    "Send Customer Action Email": {"main": [[{"node": "Mark Notification Sent", "type": "main", "index": 0}]]}
+  },
+  "meta": {
+    "evidence": "reference implementation",
+    "idempotency": "A unique database claim prevents duplicate customer notifications during replay"
+  }
+}

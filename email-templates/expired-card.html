@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <p>Hi {{ customer_name }},</p>
+    <p>We could not process {{ amount_display }} because the saved payment method needs updating.</p>
+    <p><a href="{{ secure_update_url }}">Update your payment method</a></p>
+    <p>For help, contact <a href="mailto:{{ support_email }}">{{ support_email }}</a>.</p>
+    <p>— {{ company_name }}</p>
+  </body>
+</html>

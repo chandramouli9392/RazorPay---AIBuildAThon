@@ -1,0 +1,52 @@
+[
+  {
+    "id": "evt_synthetic_expired_001",
+    "type": "payment_intent.payment_failed",
+    "created": 1786277600,
+    "data": {
+      "object": {
+        "id": "pi_synthetic_expired_001",
+        "amount": 4900,
+        "currency": "usd",
+        "customer": "cus_synthetic_001",
+        "receipt_email": "expired@example.invalid",
+        "last_payment_error": {"code": "expired_card"}
+      }
+    }
+  },
+  {
+    "id": "evt_synthetic_funds_001",
+    "type": "payment_intent.payment_failed",
+    "created": 1786277600,
+    "data": {
+      "object": {
+        "id": "pi_synthetic_funds_001",
+        "amount": 9900,
+        "currency": "usd",
+        "customer": "cus_synthetic_002",
+        "receipt_email": "funds@example.invalid",
+        "last_payment_error": {
+          "code": "card_declined",
+          "decline_code": "insufficient_funds"
+        }
+      }
+    }
+  },
+  {
+    "id": "evt_synthetic_security_001",
+    "type": "payment_intent.payment_failed",
+    "created": 1786277600,
+    "data": {
+      "object": {
+        "id": "pi_synthetic_security_001",
+        "amount": 14900,
+        "currency": "usd",
+        "customer": "cus_synthetic_003",
+        "last_payment_error": {
+          "code": "card_declined",
+          "decline_code": "fraudulent"
+        }
+      }
+    }
+  }
+]

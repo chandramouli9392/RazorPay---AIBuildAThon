@@ -1,0 +1,69 @@
+{
+  "name": "Payment Recovery - Persist Policy Decision",
+  "active": false,
+  "settings": {"executionOrder": "v1"},
+  "nodes": [
+    {
+      "id": "decision-webhook",
+      "name": "Policy Decision",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "payment-recovery/policy-decision",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived"
+      },
+      "credentials": {"httpHeaderAuth": {"name": "Recovery Engine Internal Auth"}}
+    },
+    {
+      "id": "failure-decision-check",
+      "name": "Failure Decision?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [240, 0],
+      "parameters": {
+        "conditions": {"options": {"caseSensitive": true}, "combinator": "and", "conditions": [
+          {"leftValue": "={{ $json.body.event_type }}", "rightValue": "payment_failed", "operator": {"type": "string", "operation": "equals"}}
+        ]}
+      }
+    },
+    {
+      "id": "persist-event",
+      "name": "Persist Idempotent Decision",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [500, -100],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH accepted AS (INSERT INTO webhook_events (provider, provider_event_id, event_type, payload_sha256, processing_status, processed_at) VALUES ('stripe', $1, $2, $3, 'processed', now()) ON CONFLICT (provider, provider_event_id) DO NOTHING RETURNING provider_event_id) INSERT INTO recovery_cases (provider_payment_intent_id, provider_customer_id, customer_email, amount_minor, currency, failure_category, provider_failure_code, status, attempts_completed, max_attempts, next_retry_at, policy_version) SELECT $4, $5, $6, $7, upper($8), $9, $10, $11, $12, $13, $14::timestamptz, $15 FROM accepted WHERE $16::boolean ON CONFLICT (provider, provider_payment_intent_id) DO UPDATE SET failure_category = EXCLUDED.failure_category, provider_failure_code = EXCLUDED.provider_failure_code, status = EXCLUDED.status, attempts_completed = EXCLUDED.attempts_completed, max_attempts = EXCLUDED.max_attempts, next_retry_at = EXCLUDED.next_retry_at, policy_version = EXCLUDED.policy_version, version = recovery_cases.version + 1, updated_at = now() RETURNING id",
+        "options": {
+          "queryReplacement": "={{ [$json.body.event_id, $json.body.event_type, $json.body.payload_sha256, $json.body.payment_intent_id, $json.body.customer_id ?? null, $json.body.customer_email ?? null, $json.body.amount_minor ?? 0, $json.body.currency ?? 'USD', $json.body.decision.category, $json.body.provider_failure_code, $json.body.case.status, $json.body.case.attempts_completed, $json.body.decision.max_attempts, $json.body.decision.next_retry_at, $json.body.decision.policy_version, $json.body.applied] }}"
+        }
+      },
+      "credentials": {"postgres": {"name": "Payment Recovery PostgreSQL"}}
+    },
+    {
+      "id": "persist-terminal-event",
+      "name": "Persist Terminal Event",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [500, 120],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH accepted AS (INSERT INTO webhook_events (provider, provider_event_id, event_type, payload_sha256, processing_status, processed_at) VALUES ('stripe', $1, $2, $3, 'processed', now()) ON CONFLICT (provider, provider_event_id) DO NOTHING RETURNING provider_event_id) UPDATE recovery_cases SET status = CASE WHEN $2 = 'payment_succeeded' THEN 'recovered' ELSE 'cancelled' END, next_retry_at = NULL, lease_owner = NULL, lease_expires_at = NULL, recovered_at = CASE WHEN $2 = 'payment_succeeded' THEN now() ELSE NULL END, cancelled_at = CASE WHEN $2 = 'payment_canceled' THEN now() ELSE NULL END, version = version + 1, updated_at = now() WHERE provider = 'stripe' AND provider_payment_intent_id = $4 AND status NOT IN ('recovered', 'cancelled') AND EXISTS (SELECT 1 FROM accepted) RETURNING id",
+        "options": {"queryReplacement": "={{ [$json.body.event_id, $json.body.event_type, $json.body.payload_sha256, $json.body.payment_intent_id] }}"}
+      },
+      "credentials": {"postgres": {"name": "Payment Recovery PostgreSQL"}}
+    }
+  ],
+  "connections": {
+    "Policy Decision": {"main": [[{"node": "Failure Decision?", "type": "main", "index": 0}]]},
+    "Failure Decision?": {"main": [[{"node": "Persist Idempotent Decision", "type": "main", "index": 0}], [{"node": "Persist Terminal Event", "type": "main", "index": 0}]]}
+  },
+  "meta": {
+    "evidence": "reference implementation",
+    "policyBoundary": "Classification and retry policy are supplied by payment_recovery, never calculated in this workflow"
+  }
+}

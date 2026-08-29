@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <p>Hi {{ customer_name }},</p>
+    <p>We could not process {{ amount_display }}. The next scheduled attempt is {{ next_retry_display }}.</p>
+    <p><a href="{{ secure_update_url }}">Review or update your payment method</a></p>
+    <p>For help, contact <a href="mailto:{{ support_email }}">{{ support_email }}</a>.</p>
+    <p>— {{ company_name }}</p>
+  </body>
+</html>
