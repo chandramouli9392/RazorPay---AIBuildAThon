@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import random
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
 from ..models import CustomerRevenueContext, RevenueEvent
 
@@ -13,7 +12,8 @@ _CUSTOMER_DB: dict[str, CustomerRevenueContext] = {}
 def get_or_create_customer_context(
     customer_id: str, event: RevenueEvent | None = None
 ) -> CustomerRevenueContext:
-    """Retrieve existing customer revenue context or create a deterministic context based on customer_id."""
+    """Retrieve existing customer revenue context or create a deterministic context
+    based on customer_id."""
     if customer_id in _CUSTOMER_DB:
         return _CUSTOMER_DB[customer_id]
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import random
-from typing import Any
 
 from ..models import (
     CustomerRevenueContext,
@@ -13,7 +12,8 @@ from ..models import (
 
 
 class StochasticRecoveryEnvironment:
-    """Independent ground-truth environment simulator modeling real-world payment recovery dynamics."""
+    """Independent ground-truth environment simulator modeling real-world payment recovery
+    dynamics."""
 
     def __init__(self, seed: int = 42) -> None:
         self.rng = random.Random(seed)
@@ -25,7 +25,8 @@ class StochasticRecoveryEnvironment:
         category: FailureCategory,
         action: InterventionType,
     ) -> float:
-        """Calculate the TRUE underlying stochastic probability P_true(recovered | context, failure, action).
+        """Calculate the TRUE underlying stochastic probability
+        P_true(recovered | context, failure, action).
 
         The AI model NEVER sees this function; it only observes historical features X.
         """
@@ -43,7 +44,9 @@ class StochasticRecoveryEnvironment:
             return 0.03
 
         # Base customer responsiveness from historical success rate & LTV
-        base_resp = 0.30 + 0.45 * context.historical_success_rate + 0.10 * min(1.0, context.ltv / 100000.0)
+        base_resp = (
+            0.30 + 0.45 * context.historical_success_rate + 0.10 * min(1.0, context.ltv / 100000.0)
+        )
 
         # ---------------------------------------------------------------------
         # 1. FAILED PAYMENTS / SUBSCRIPTIONS (INSUFFICIENT FUNDS)
@@ -55,7 +58,10 @@ class StochasticRecoveryEnvironment:
             elif action == InterventionType.RETRY:
                 # Immediate retry fails 80%+ because account hasn't reloaded
                 prob = base_resp - 0.25
-            elif action in (InterventionType.PAYMENT_REMINDER, InterventionType.PERSONALIZED_MESSAGE):
+            elif action in (
+                InterventionType.PAYMENT_REMINDER,
+                InterventionType.PERSONALIZED_MESSAGE,
+            ):
                 prob = base_resp + 0.15
             elif action == InterventionType.UPDATE_PAYMENT_METHOD:
                 prob = base_resp + 0.10
@@ -88,7 +94,10 @@ class StochasticRecoveryEnvironment:
         elif event.leakage_type == LeakageType.CHECKOUT_ABANDONMENT:
             if action == InterventionType.CHECKOUT_RECOVERY:
                 prob = base_resp + 0.32  # 1-click checkout recovery link
-            elif action in (InterventionType.PAYMENT_REMINDER, InterventionType.PERSONALIZED_MESSAGE):
+            elif action in (
+                InterventionType.PAYMENT_REMINDER,
+                InterventionType.PERSONALIZED_MESSAGE,
+            ):
                 prob = base_resp + 0.18
             elif action in (InterventionType.RETRY, InterventionType.DELAYED_RETRY):
                 prob = 0.0  # Retrying an unsubmitted checkout fails
@@ -113,7 +122,7 @@ class StochasticRecoveryEnvironment:
 
         # Customer fatigue penalty: repeated interventions reduce response probability
         if context.previous_interventions_count > 0:
-            prob *= (0.85 ** context.previous_interventions_count)
+            prob *= 0.85**context.previous_interventions_count
 
         # Add environmental stochastic noise (+/- 5%)
         noise = self.rng.uniform(-0.05, 0.05)

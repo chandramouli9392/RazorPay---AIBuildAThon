@@ -1,20 +1,15 @@
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass
-from typing import Any
 
 from ..ai.decision_agent import RevenueRecoveryDecisionAgent
 from ..ai.probability_model import MLRecoveryProbabilityModel
 from ..ai.root_cause import RootCauseAnalysisAgent
-from ..execution.engine import RecoveryExecutionEngine
 from ..models import (
-    CustomerRevenueContext,
     FailureCategory,
     GuardrailStatus,
     InterventionType,
     LeakageType,
-    RevenueEvent,
 )
 from ..policy.guardrails import DeterministicGuardrailEngine
 from .dataset import generate_synthetic_dataset
@@ -104,10 +99,12 @@ class RevenueRecoveryBenchmark:
             # STRATEGY 1: NAIVE FIXED RETRY BASELINE
             # Blindly retries immediately on payment/subscription declines
             # -----------------------------------------------------------------
-            if event.leakage_type in (LeakageType.FAILED_PAYMENT, LeakageType.FAILED_SUBSCRIPTION):
-                if category not in (FailureCategory.SECURITY_OR_FRAUD, FailureCategory.HARD_DECLINE):
-                    _, n_rec = env.simulate_outcome(event, context, category, InterventionType.RETRY)
-                    naive_baseline_recovered += n_rec
+            if event.leakage_type in (
+                LeakageType.FAILED_PAYMENT,
+                LeakageType.FAILED_SUBSCRIPTION,
+            ) and category not in (FailureCategory.SECURITY_OR_FRAUD, FailureCategory.HARD_DECLINE):
+                _, n_rec = env.simulate_outcome(event, context, category, InterventionType.RETRY)
+                naive_baseline_recovered += n_rec
 
             # -----------------------------------------------------------------
             # STRATEGY 2: STANDARD RULE-BASED POLICY BASELINE
@@ -130,9 +127,15 @@ class RevenueRecoveryBenchmark:
             # Candidate Optimization Matrix + ML Probability + Guardrails
             # -----------------------------------------------------------------
             prediction = self.prob_model.predict(event, context, category)
-            decision = self.decision_agent.decide_intervention(event, context, root_cause, prediction)
+            decision = self.decision_agent.decide_intervention(
+                event, context, root_cause, prediction
+            )
             guardrail = self.guardrail_engine.validate(
-                event, context, decision, prediction, attempts_completed=context.previous_failures_count
+                event,
+                context,
+                decision,
+                prediction,
+                attempts_completed=context.previous_failures_count,
             )
 
             if guardrail.status == GuardrailStatus.REJECTED:
@@ -142,13 +145,17 @@ class RevenueRecoveryBenchmark:
             if guardrail.status == GuardrailStatus.HUMAN_REVIEW or decision.requires_human:
                 human_escalations += 1
                 if decision.expected_net_recovery > 500.0:
-                    is_rec, ai_rec = env.simulate_outcome(event, context, category, decision.recommended_action)
+                    is_rec, ai_rec = env.simulate_outcome(
+                        event, context, category, decision.recommended_action
+                    )
                     ai_agent_recovered += ai_rec
                 continue
 
             if decision.recommended_action != InterventionType.NO_ACTION:
                 ai_interventions_count += 1
-                is_rec, ai_rec = env.simulate_outcome(event, context, category, decision.recommended_action)
+                is_rec, ai_rec = env.simulate_outcome(
+                    event, context, category, decision.recommended_action
+                )
                 ai_agent_recovered += ai_rec
 
                 if is_rec:
@@ -156,7 +163,9 @@ class RevenueRecoveryBenchmark:
                 else:
                     unnecessary_interventions += 1
 
-            opt_p = env.get_ground_truth_payoff(event, context, category, decision.recommended_action)
+            opt_p = env.get_ground_truth_payoff(
+                event, context, category, decision.recommended_action
+            )
             if opt_p > 0.40:
                 truly_recoverable_count += 1
 
@@ -253,7 +262,7 @@ class RevenueRecoveryBenchmark:
         def _std(lst: list[float]) -> float:
             m = _mean(lst)
             var = sum((x - m) ** 2 for x in lst) / len(lst)
-            return var ** 0.5
+            return var**0.5
 
         return MultiSeedBenchmarkResult(
             seeds_evaluated=seeds,

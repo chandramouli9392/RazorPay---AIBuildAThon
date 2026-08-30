@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import Any
 
 from ..models import (
     ActionExecution,
@@ -59,7 +58,11 @@ class RecoveryExecutionEngine:
         action_type = decision.recommended_action
         provider_resp_id: str | None = None
 
-        if action_type in (InterventionType.CHECKOUT_RECOVERY, InterventionType.INVOICE_REMINDER, InterventionType.UPDATE_PAYMENT_METHOD):
+        if action_type in (
+            InterventionType.CHECKOUT_RECOVERY,
+            InterventionType.INVOICE_REMINDER,
+            InterventionType.UPDATE_PAYMENT_METHOD,
+        ):
             link = self.provider.create_payment_link(
                 amount=event.amount,
                 currency=event.currency,
@@ -69,7 +72,9 @@ class RecoveryExecutionEngine:
             provider_resp_id = link.get("id")
 
         elif action_type in (InterventionType.RETRY, InterventionType.DELAYED_RETRY):
-            retry_res = self.provider.client_wrapper.retry_charge(event.payment_id or event.event_id)
+            retry_res = self.provider.client_wrapper.retry_charge(
+                event.payment_id or event.event_id
+            )
             provider_resp_id = retry_res.get("id")
 
         # Simulate outcome recovery amount based on predicted probability

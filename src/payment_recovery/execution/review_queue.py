@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from ..models import AuditRecord, GuardrailStatus, InterventionType
+from ..models import AuditRecord, InterventionType
 
 _REVIEW_QUEUE: dict[str, dict[str, Any]] = {}
 
@@ -48,7 +48,9 @@ class HumanReviewQueue:
         item["reviewed_at"] = datetime.now(UTC).isoformat()
         return item
 
-    def reject_case(self, case_id: str, reason: str, reviewer: str = "human_operator") -> dict[str, Any]:
+    def reject_case(
+        self, case_id: str, reason: str, reviewer: str = "human_operator"
+    ) -> dict[str, Any]:
         item = _REVIEW_QUEUE.get(case_id)
         if not item:
             raise KeyError(f"Case {case_id} not found in review queue")

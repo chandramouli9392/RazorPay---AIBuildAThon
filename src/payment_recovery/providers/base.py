@@ -15,9 +15,7 @@ class BasePaymentProvider(ABC):
         """Name of the provider (e.g., 'razorpay')."""
 
     @abstractmethod
-    def verify_webhook_signature(
-        self, raw_body: bytes, signature_header: str, secret: str
-    ) -> bool:
+    def verify_webhook_signature(self, raw_body: bytes, signature_header: str, secret: str) -> bool:
         """Verify webhook signature using raw body bytes."""
 
     @abstractmethod

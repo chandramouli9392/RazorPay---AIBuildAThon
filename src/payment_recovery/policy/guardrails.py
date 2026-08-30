@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
-from typing import Any
+from datetime import UTC, datetime
 
 from ..models import (
     CustomerRevenueContext,
-    FailureCategory,
     GuardrailResult,
     GuardrailStatus,
     InterventionDecision,
@@ -49,11 +47,18 @@ class DeterministicGuardrailEngine:
 
         # Rule 1: Terminal State Protection
         rules_evaluated.append("terminal_state_check")
-        if case_status in (RecoveryStatus.RECOVERED, RecoveryStatus.CANCELLED, RecoveryStatus.EXHAUSTED):
+        if case_status in (
+            RecoveryStatus.RECOVERED,
+            RecoveryStatus.CANCELLED,
+            RecoveryStatus.EXHAUSTED,
+        ):
             return GuardrailResult(
                 passed=False,
                 status=GuardrailStatus.REJECTED,
-                rejection_reason=f"Terminal state protection: Case is already in terminal state '{case_status.value}'.",
+                rejection_reason=(
+                    f"Terminal state protection: Case is already in "
+                    f"terminal state '{case_status.value}'."
+                ),
                 rules_evaluated=rules_evaluated,
             )
 
@@ -63,13 +68,19 @@ class DeterministicGuardrailEngine:
             return GuardrailResult(
                 passed=False,
                 status=GuardrailStatus.REJECTED,
-                rejection_reason="Security policy violation: Auto-interventions blocked on security/fraud declines.",
+                rejection_reason=(
+                    "Security policy violation: Auto-interventions blocked "
+                    "on security/fraud declines."
+                ),
                 rules_evaluated=rules_evaluated,
             )
 
         # Rule 3: Explicit Human Review Requirement
         rules_evaluated.append("human_review_flag")
-        if decision.requires_human or decision.recommended_action == InterventionType.HUMAN_ESCALATION:
+        if (
+            decision.requires_human
+            or decision.recommended_action == InterventionType.HUMAN_ESCALATION
+        ):
             return GuardrailResult(
                 passed=True,
                 status=GuardrailStatus.HUMAN_REVIEW,
@@ -79,14 +90,22 @@ class DeterministicGuardrailEngine:
 
         # Rule 4: Maximum Retry Budget Exhaustion
         rules_evaluated.append("retry_budget_check")
-        if decision.recommended_action in (InterventionType.RETRY, InterventionType.DELAYED_RETRY):
-            if attempts_completed >= self.MAX_RETRY_COUNT:
-                return GuardrailResult(
-                    passed=False,
-                    status=GuardrailStatus.REJECTED,
-                    rejection_reason=f"Retry budget exhausted: Max retry attempts ({self.MAX_RETRY_COUNT}) reached.",
-                    rules_evaluated=rules_evaluated,
-                )
+        if (
+            decision.recommended_action
+            in (
+                InterventionType.RETRY,
+                InterventionType.DELAYED_RETRY,
+            )
+            and attempts_completed >= self.MAX_RETRY_COUNT
+        ):
+            return GuardrailResult(
+                passed=False,
+                status=GuardrailStatus.REJECTED,
+                rejection_reason=(
+                    f"Retry budget exhausted: Max retry attempts ({self.MAX_RETRY_COUNT}) reached."
+                ),
+                rules_evaluated=rules_evaluated,
+            )
 
         # Rule 5: Monetary Exposure Cap
         rules_evaluated.append("monetary_exposure_check")
@@ -94,19 +113,29 @@ class DeterministicGuardrailEngine:
             return GuardrailResult(
                 passed=True,
                 status=GuardrailStatus.HUMAN_REVIEW,
-                rejection_reason=f"Monetary threshold flag: Amount (₹{event.amount:,.2f}) exceeds auto-approval limit (₹{self.MAX_AUTO_EXPOSURE_INR:,.2f}). Escalate to human operator.",
+                rejection_reason=(
+                    f"Monetary threshold flag: Amount (₹{event.amount:,.2f}) "
+                    f"exceeds auto-approval limit (₹{self.MAX_AUTO_EXPOSURE_INR:,.2f}). "
+                    "Escalate to human operator."
+                ),
                 rules_evaluated=rules_evaluated,
             )
 
         # Rule 6: Intervention Frequency Throttle
         rules_evaluated.append("contact_frequency_throttle")
         if context.last_intervention_at:
-            elapsed_hours = (datetime.now(UTC) - context.last_intervention_at).total_seconds() / 3600.0
+            elapsed_hours = (
+                datetime.now(UTC) - context.last_intervention_at
+            ).total_seconds() / 3600.0
             if elapsed_hours < self.MIN_INTERVENTION_INTERVAL_HOURS:
                 return GuardrailResult(
                     passed=False,
                     status=GuardrailStatus.REJECTED,
-                    rejection_reason=f"Contact frequency limit: Last intervention was {elapsed_hours:.1f}h ago (minimum interval is {self.MIN_INTERVENTION_INTERVAL_HOURS}h).",
+                    rejection_reason=(
+                        f"Contact frequency limit: Last intervention was "
+                        f"{elapsed_hours:.1f}h ago (minimum interval is "
+                        f"{self.MIN_INTERVENTION_INTERVAL_HOURS}h)."
+                    ),
                     rules_evaluated=rules_evaluated,
                 )
 
@@ -116,17 +145,28 @@ class DeterministicGuardrailEngine:
             return GuardrailResult(
                 passed=False,
                 status=GuardrailStatus.REJECTED,
-                rejection_reason=f"Policy violation: Action '{decision.recommended_action.value}' is not in the allowed action whitelist.",
+                rejection_reason=(
+                    f"Policy violation: Action "
+                    f"'{decision.recommended_action.value}' is not in "
+                    "the allowed action whitelist."
+                ),
                 rules_evaluated=rules_evaluated,
             )
 
         # Rule 8: Low Confidence Floor
         rules_evaluated.append("confidence_floor_check")
-        if prediction.recovery_probability < self.MIN_CONFIDENCE_THRESHOLD and decision.recommended_action != InterventionType.NO_ACTION:
+        if (
+            prediction.recovery_probability < self.MIN_CONFIDENCE_THRESHOLD
+            and decision.recommended_action != InterventionType.NO_ACTION
+        ):
             return GuardrailResult(
                 passed=False,
                 status=GuardrailStatus.REJECTED,
-                rejection_reason=f"Confidence floor violation: Probability ({prediction.recovery_probability:.2f}) below threshold ({self.MIN_CONFIDENCE_THRESHOLD}).",
+                rejection_reason=(
+                    f"Confidence floor violation: Probability "
+                    f"({prediction.recovery_probability:.2f}) below "
+                    f"threshold ({self.MIN_CONFIDENCE_THRESHOLD})."
+                ),
                 rules_evaluated=rules_evaluated,
             )
 

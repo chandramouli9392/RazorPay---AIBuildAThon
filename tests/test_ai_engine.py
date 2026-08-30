@@ -10,7 +10,6 @@ from payment_recovery.ai.root_cause import RootCauseAnalysisAgent
 from payment_recovery.evaluation.benchmark import RevenueRecoveryBenchmark
 from payment_recovery.models import (
     FailureCategory,
-    InterventionType,
     LeakageType,
     RevenueEvent,
 )

@@ -87,6 +87,8 @@ def test_full_end_to_end_revenue_recovery_pipeline():
 
     # 10. Audit Logging & Human Review Queue
     logger = RecoveryAuditLogger()
-    audit = logger.log_decision_pipeline(event, context, root_cause, prediction, decision, guardrail, action)
+    audit = logger.log_decision_pipeline(
+        event, context, root_cause, prediction, decision, guardrail, action
+    )
     assert audit.audit_id is not None
     assert audit.amount_at_risk == 10000.0

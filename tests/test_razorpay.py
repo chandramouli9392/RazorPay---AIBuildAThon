@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+
 import pytest
 
+from payment_recovery.models import LeakageType
 from payment_recovery.providers.razorpay.adapter import RazorpayProviderAdapter
 from payment_recovery.providers.razorpay.signatures import (
     RazorpaySignatureVerificationError,
     verify_razorpay_signature,
 )
-from payment_recovery.models import LeakageType, FailureCategory
 
 
 def test_verify_razorpay_signature_success():

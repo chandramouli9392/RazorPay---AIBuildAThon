@@ -14,9 +14,7 @@ from ..providers.razorpay.adapter import normalize_razorpay_failure
 class RootCauseAnalysisAgent:
     """Root Cause AI Agent analyzing failure cause from verified system data."""
 
-    def diagnose(
-        self, event: RevenueEvent, context: CustomerRevenueContext
-    ) -> RootCauseAnalysis:
+    def diagnose(self, event: RevenueEvent, context: CustomerRevenueContext) -> RootCauseAnalysis:
         """Perform structured diagnosis over event payload and customer context."""
         failure = RazorpayFailure(
             error_code=event.failure_code,
@@ -33,7 +31,8 @@ class RootCauseAnalysisAgent:
             f"Provider reason: '{event.failure_reason or 'N/A'}'",
             f"Customer LTV: ₹{context.ltv:,.2f} ({context.segment} segment)",
             f"Historical payment success rate: {int(context.historical_success_rate * 100)}%",
-            f"Previous failures: {context.previous_failures_count}, recoveries: {context.previous_recoveries_count}",
+            f"Previous failures: {context.previous_failures_count}, "
+            f"recoveries: {context.previous_recoveries_count}",
         ]
 
         # Handle specific leakage types
@@ -42,9 +41,12 @@ class RootCauseAnalysisAgent:
                 root_cause="Customer abandoned checkout before completing authorization",
                 category=FailureCategory.CHECKOUT_ABANDONED,
                 confidence=0.92,
-                evidence=evidence + ["Checkout order created but authorization step was not completed"],
-                recoverability="HIGH" if context.historical_success_rate > 0.6 else "MEDIUM",
-                recommended_next_step="Send automated personalized checkout recovery link via WhatsApp/Email",
+                evidence=evidence
+                + ["Checkout order created but authorization step was not completed"],
+                recoverability=("HIGH" if context.historical_success_rate > 0.6 else "MEDIUM"),
+                recommended_next_step=(
+                    "Send automated personalized checkout recovery link via WhatsApp/Email"
+                ),
             )
 
         if event.leakage_type == LeakageType.OVERDUE_RECEIVABLE:
@@ -54,7 +56,9 @@ class RootCauseAnalysisAgent:
                 confidence=0.95,
                 evidence=evidence + [f"Invoice unpaid for {context.days_overdue} days"],
                 recoverability="HIGH" if context.ltv > 20000 else "MEDIUM",
-                recommended_next_step="Send gentle payment reminder notice with direct 1-click Razorpay payment link",
+                recommended_next_step=(
+                    "Send gentle payment reminder notice with direct 1-click Razorpay payment link"
+                ),
             )
 
         if category == FailureCategory.INSUFFICIENT_FUNDS:
@@ -66,12 +70,16 @@ class RootCauseAnalysisAgent:
                 confidence=confidence,
                 evidence=evidence + ["Issuer returned insufficient balance error"],
                 recoverability=recoverability,
-                recommended_next_step="Schedule bounded delayed retries aligned with payday (48h / 120h schedule)",
+                recommended_next_step=(
+                    "Schedule bounded delayed retries aligned with payday (48h / 120h schedule)"
+                ),
             )
 
         if category == FailureCategory.TEMPORARY_PROCESSING:
             return RootCauseAnalysis(
-                root_cause="Temporary processing/gateway connectivity interruption between bank & issuer",
+                root_cause=(
+                    "Temporary processing/gateway connectivity interruption between bank & issuer"
+                ),
                 category=category,
                 confidence=0.89,
                 evidence=evidence + ["Gateway or bank system reported transient timeout/error"],
@@ -86,12 +94,16 @@ class RootCauseAnalysisAgent:
                 confidence=0.96,
                 evidence=evidence + ["Issuer returned expired/invalid payment method code"],
                 recoverability="MEDIUM",
-                recommended_next_step="Request customer to update payment method details via secure Razorpay portal",
+                recommended_next_step=(
+                    "Request customer to update payment method details via secure Razorpay portal"
+                ),
             )
 
         if category == FailureCategory.AUTHENTICATION_REQUIRED:
             return RootCauseAnalysis(
-                root_cause="Customer 3D-Secure or OTP authentication was required but not completed",
+                root_cause=(
+                    "Customer 3D-Secure or OTP authentication was required but not completed"
+                ),
                 category=category,
                 confidence=0.91,
                 evidence=evidence + ["Authentication step timed out or was abandoned by user"],
@@ -101,7 +113,9 @@ class RootCauseAnalysisAgent:
 
         if category == FailureCategory.SECURITY_OR_FRAUD:
             return RootCauseAnalysis(
-                root_cause="Provider or issuer security system flagged transaction for security review",
+                root_cause=(
+                    "Provider or issuer security system flagged transaction for security review"
+                ),
                 category=category,
                 confidence=0.98,
                 evidence=evidence + ["Security/fraud decline code observed"],
@@ -125,6 +139,6 @@ class RootCauseAnalysisAgent:
             category=FailureCategory.UNKNOWN,
             confidence=0.70,
             evidence=evidence,
-            recoverability="MEDIUM" if context.historical_success_rate > 0.75 else "LOW",
+            recoverability=("MEDIUM" if context.historical_success_rate > 0.75 else "LOW"),
             recommended_next_step="Perform single delayed retry or request manual operational review",
         )

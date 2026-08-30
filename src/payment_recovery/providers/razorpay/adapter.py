@@ -83,10 +83,19 @@ def normalize_razorpay_failure(failure: RazorpayFailure) -> NormalizedFailure:
     elif any(s in reason_str or s in code for s in AUTHENTICATION_REASONS):
         category = FailureCategory.AUTHENTICATION_REQUIRED
         reason = f"Customer authentication failed: {desc}"
-    elif "insufficient" in reason_str or "low balance" in reason_str or code in INSUFFICIENT_FUNDS_REASONS:
+    elif (
+        "insufficient" in reason_str
+        or "low balance" in reason_str
+        or code in INSUFFICIENT_FUNDS_REASONS
+    ):
         category = FailureCategory.INSUFFICIENT_FUNDS
         reason = f"Insufficient balance/funds: {desc}"
-    elif "timeout" in reason_str or "temporary" in reason_str or code in TEMPORARY_REASONS or failure.source == "gateway":
+    elif (
+        "timeout" in reason_str
+        or "temporary" in reason_str
+        or code in TEMPORARY_REASONS
+        or failure.source == "gateway"
+    ):
         category = FailureCategory.TEMPORARY_PROCESSING
         reason = f"Temporary bank/gateway issue: {desc}"
     elif any(s in reason_str or s in code for s in HARD_DECLINE_REASONS):
@@ -114,9 +123,7 @@ class RazorpayProviderAdapter(BasePaymentProvider):
     def provider_name(self) -> str:
         return "razorpay"
 
-    def verify_webhook_signature(
-        self, raw_body: bytes, signature_header: str, secret: str
-    ) -> bool:
+    def verify_webhook_signature(self, raw_body: bytes, signature_header: str, secret: str) -> bool:
         return verify_razorpay_signature(raw_body, signature_header, secret)
 
     def normalize_event(self, raw_payload: dict[str, Any]) -> RevenueEvent:

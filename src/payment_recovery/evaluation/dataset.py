@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import random
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
 from ..models import CustomerRevenueContext, FailureCategory, LeakageType, RevenueEvent
 
@@ -10,9 +9,11 @@ from ..models import CustomerRevenueContext, FailureCategory, LeakageType, Reven
 def generate_synthetic_dataset(
     count: int = 5000, seed: int = 42
 ) -> list[tuple[RevenueEvent, CustomerRevenueContext]]:
-    """Generate reproducible synthetic dataset of pre-intervention revenue events and customer contexts.
+    """Generate reproducible synthetic dataset of pre-intervention revenue events
+    and customer contexts.
 
-    Features generated are strictly pre-intervention and contain NO future states or target labels.
+    Features generated are strictly pre-intervention and contain NO future states
+    or target labels.
     """
     rng = random.Random(seed)
     dataset: list[tuple[RevenueEvent, CustomerRevenueContext]] = []
@@ -26,11 +27,26 @@ def generate_synthetic_dataset(
     ]
 
     failure_reasons = {
-        FailureCategory.INSUFFICIENT_FUNDS: ("BAD_REQUEST_ERROR", "Insufficient funds in customer account"),
-        FailureCategory.TEMPORARY_PROCESSING: ("GATEWAY_ERROR", "Temporary bank network timeout"),
-        FailureCategory.INVALID_PAYMENT_METHOD: ("INVALID_CARD", "Expired or invalid card details"),
-        FailureCategory.AUTHENTICATION_REQUIRED: ("AUTH_FAILED", "Customer 3DS authentication required"),
-        FailureCategory.SECURITY_OR_FRAUD: ("RISK_CHECK_FAILED", "Flagged by security risk engine"),
+        FailureCategory.INSUFFICIENT_FUNDS: (
+            "BAD_REQUEST_ERROR",
+            "Insufficient funds in customer account",
+        ),
+        FailureCategory.TEMPORARY_PROCESSING: (
+            "GATEWAY_ERROR",
+            "Temporary bank network timeout",
+        ),
+        FailureCategory.INVALID_PAYMENT_METHOD: (
+            "INVALID_CARD",
+            "Expired or invalid card details",
+        ),
+        FailureCategory.AUTHENTICATION_REQUIRED: (
+            "AUTH_FAILED",
+            "Customer 3DS authentication required",
+        ),
+        FailureCategory.SECURITY_OR_FRAUD: (
+            "RISK_CHECK_FAILED",
+            "Flagged by security risk engine",
+        ),
         FailureCategory.HARD_DECLINE: ("DO_NOT_HONOR", "Issuer hard decline"),
     }
     failure_categories = list(failure_reasons.keys())
@@ -58,14 +74,20 @@ def generate_synthetic_dataset(
         event = RevenueEvent(
             event_id=evt_id,
             provider="razorpay",
-            event_type="payment.failed" if l_type == LeakageType.FAILED_PAYMENT else f"{l_type.value}.failed",
+            event_type=(
+                "payment.failed"
+                if l_type == LeakageType.FAILED_PAYMENT
+                else f"{l_type.value}.failed"
+            ),
             leakage_type=l_type,
             occurred_at=occurred_at,
             customer_id=cust_id,
             payment_id=f"pay_{evt_id[:10]}" if l_type != LeakageType.CHECKOUT_ABANDONMENT else None,
             order_id=f"order_{evt_id[:10]}",
-            subscription_id=f"sub_{evt_id[:10]}" if l_type == LeakageType.FAILED_SUBSCRIPTION else None,
-            invoice_id=f"inv_{evt_id[:10]}" if l_type == LeakageType.OVERDUE_RECEIVABLE else None,
+            subscription_id=(
+                f"sub_{evt_id[:10]}" if l_type == LeakageType.FAILED_SUBSCRIPTION else None
+            ),
+            invoice_id=(f"inv_{evt_id[:10]}" if l_type == LeakageType.OVERDUE_RECEIVABLE else None),
             amount=amount,
             currency="INR",
             status="failed" if l_type != LeakageType.OVERDUE_RECEIVABLE else "overdue",
@@ -81,7 +103,15 @@ def generate_synthetic_dataset(
         tenure = rng.randint(10, 700)
         days_overdue = rng.randint(1, 30) if l_type == LeakageType.OVERDUE_RECEIVABLE else 0
 
-        segment = "VIP" if ltv > 50000 else "Standard" if ltv > 15000 else "At-Risk" if success_rate < 0.6 else "New"
+        segment = (
+            "VIP"
+            if ltv > 50000
+            else "Standard"
+            if ltv > 15000
+            else "At-Risk"
+            if success_rate < 0.6
+            else "New"
+        )
 
         context = CustomerRevenueContext(
             customer_id=cust_id,

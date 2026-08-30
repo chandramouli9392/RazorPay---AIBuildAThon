@@ -55,9 +55,14 @@ class RevenueLeakageDetector:
     def _describe_leakage(self, event: RevenueEvent, leakage_type: LeakageType) -> str:
         amt = f"₹{event.amount:,.2f}"
         if leakage_type == LeakageType.FAILED_PAYMENT:
-            return f"Payment of {amt} failed due to {event.failure_reason or 'declined transaction'}."
+            return (
+                f"Payment of {amt} failed due to {event.failure_reason or 'declined transaction'}."
+            )
         if leakage_type == LeakageType.FAILED_SUBSCRIPTION:
-            return f"Recurring subscription charge of {amt} failed (Sub ID: {event.subscription_id or 'N/A'})."
+            return (
+                f"Recurring subscription charge of {amt} failed "
+                f"(Sub ID: {event.subscription_id or 'N/A'})."
+            )
         if leakage_type == LeakageType.CHECKOUT_ABANDONMENT:
             return f"Checkout session for {amt} was abandoned prior to payment completion."
         if leakage_type == LeakageType.OVERDUE_RECEIVABLE:

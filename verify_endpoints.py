@@ -1,8 +1,8 @@
-import urllib.request
 import json
-import sys
+import urllib.request
 
 base_url = "http://127.0.0.1:8000"
+
 
 def test_get(path):
     url = f"{base_url}{path}"
@@ -12,24 +12,23 @@ def test_get(path):
         print(f"[OK] GET {path} -> Status {res.status}")
         return content
 
+
 def test_post(path, data=b"{}"):
     url = f"{base_url}{path}"
     req = urllib.request.Request(
-        url,
-        data=data,
-        headers={"Content-Type": "application/json"},
-        method="POST"
+        url, data=data, headers={"Content-Type": "application/json"}, method="POST"
     )
     with urllib.request.urlopen(req, timeout=30) as res:
         content = res.read()
         print(f"[OK] POST {path} -> Status {res.status}")
         return json.loads(content.decode("utf-8"))
 
+
 def main():
     print("=" * 60)
     print("VERIFYING LOCAL FASTAPI ENDPOINTS & DASHBOARD")
     print("=" * 60)
-    
+
     # 1. GET /
     dashboard = test_get("/")
     assert b"AI Revenue Recovery Agent" in dashboard
@@ -50,12 +49,16 @@ def main():
     metrics = json.loads(test_get("/recovery/metrics").decode("utf-8"))
     assert "revenue_at_risk" in metrics
     assert "recovery_uplift_percent" in metrics
-    print(f"  -> Metrics: Revenue At Risk = INR {metrics['revenue_at_risk']:,}, Uplift = {metrics['recovery_uplift_percent']}%")
+    print(
+        f"  -> Metrics: Revenue At Risk = INR {metrics['revenue_at_risk']:,}, Uplift = {metrics['recovery_uplift_percent']}%"
+    )
 
     # 5. POST /demo/simulate
     sim = test_post("/demo/simulate")
     assert sim["status"] == "success"
-    print(f"  -> Demo Simulation: Revenue At Risk = INR {sim['revenue_at_risk']:,}, AI Recovered = INR {sim['actual_ai_recovered']:,}")
+    print(
+        f"  -> Demo Simulation: Revenue At Risk = INR {sim['revenue_at_risk']:,}, AI Recovered = INR {sim['actual_ai_recovered']:,}"
+    )
 
     # 6. GET /recovery/cases
     cases = json.loads(test_get("/recovery/cases").decode("utf-8"))
@@ -64,11 +67,14 @@ def main():
     # 7. POST /evaluation/run
     eval_res = test_post("/evaluation/run")
     assert eval_res["total_records"] == 5000
-    print(f"  -> 5,000 Event Benchmark Run: F1 Score = {eval_res['f1_score_percent']}%, AI Recovered = INR {eval_res['ai_recovered_inr']:,}")
+    print(
+        f"  -> 5,000 Event Benchmark Run: F1 Score = {eval_res['f1_score_percent']}%, AI Recovered = INR {eval_res['ai_recovered_inr']:,}"
+    )
 
     print("=" * 60)
     print("ALL ENDPOINTS VERIFIED AND FUNCTIONING PERFECTLY!")
     print("=" * 60)
+
 
 if __name__ == "__main__":
     main()

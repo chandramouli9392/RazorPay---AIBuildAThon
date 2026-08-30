@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, ConfigDict
 
 from .ai.context import get_or_create_customer_context
@@ -18,11 +18,8 @@ from .evaluation.benchmark import RevenueRecoveryBenchmark
 from .execution.engine import RecoveryExecutionEngine
 from .execution.review_queue import HumanReviewQueue
 from .models import (
-    FailureCategory,
     InterventionType,
     LeakageType,
-    NormalizedFailure,
-    RecoveryStatus,
     RevenueEvent,
     StripeFailure,
 )
@@ -223,7 +220,6 @@ def get_benchmark_results() -> dict[str, Any]:
     return {**_LAST_BENCHMARK_RESULT, "completed_at": _LAST_BENCHMARK_TIME, "status": "completed"}
 
 
-
 @app.post("/demo/simulate")
 def run_demo_simulation() -> dict[str, Any]:
     """Run full demo simulation across 20 synthetic Razorpay events."""
@@ -247,11 +243,46 @@ def run_demo_simulation() -> dict[str, Any]:
 
 def _seed_demo_cases() -> None:
     demo_events = [
-        ("evt_rzp_01", "cust_rzp_101", LeakageType.FAILED_SUBSCRIPTION, 14999.0, "insufficient_funds", "BAD_REQUEST_ERROR"),
-        ("evt_rzp_02", "cust_rzp_102", LeakageType.CHECKOUT_ABANDONMENT, 25000.0, "checkout_abandoned", "AUTH_ABANDONED"),
-        ("evt_rzp_03", "cust_rzp_103", LeakageType.OVERDUE_RECEIVABLE, 100000.0, "invoice_overdue", "INVOICE_PAST_DUE"),
-        ("evt_rzp_04", "cust_rzp_104", LeakageType.FAILED_PAYMENT, 5000.0, "temporary_processing", "GATEWAY_TIMEOUT"),
-        ("evt_rzp_05", "cust_rzp_105", LeakageType.FAILED_PAYMENT, 85000.0, "security_or_fraud", "RISK_CHECK_FAILED"),
+        (
+            "evt_rzp_01",
+            "cust_rzp_101",
+            LeakageType.FAILED_SUBSCRIPTION,
+            14999.0,
+            "insufficient_funds",
+            "BAD_REQUEST_ERROR",
+        ),
+        (
+            "evt_rzp_02",
+            "cust_rzp_102",
+            LeakageType.CHECKOUT_ABANDONMENT,
+            25000.0,
+            "checkout_abandoned",
+            "AUTH_ABANDONED",
+        ),
+        (
+            "evt_rzp_03",
+            "cust_rzp_103",
+            LeakageType.OVERDUE_RECEIVABLE,
+            100000.0,
+            "invoice_overdue",
+            "INVOICE_PAST_DUE",
+        ),
+        (
+            "evt_rzp_04",
+            "cust_rzp_104",
+            LeakageType.FAILED_PAYMENT,
+            5000.0,
+            "temporary_processing",
+            "GATEWAY_TIMEOUT",
+        ),
+        (
+            "evt_rzp_05",
+            "cust_rzp_105",
+            LeakageType.FAILED_PAYMENT,
+            85000.0,
+            "security_or_fraud",
+            "RISK_CHECK_FAILED",
+        ),
     ]
     for eid, cid, ltype, amt, cat, code in demo_events:
         evt = RevenueEvent(
@@ -296,14 +327,21 @@ def modify_case(case_id: str, req: ModifyInterventionRequest) -> dict[str, Any]:
     try:
         action = InterventionType(req.new_action)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Unknown intervention type: {req.new_action}")
+        raise HTTPException(
+            status_code=400, detail=f"Unknown intervention type: {req.new_action}"
+        ) from None
     try:
         res = review_queue.modify_case(case_id, action, reviewer=req.reviewer)
         item = {k: v for k, v in res.items() if k != "audit_record"}
         if case_id in _ACTIVE_CASES:
             _ACTIVE_CASES[case_id]["decision"] = req.new_action
             _ACTIVE_CASES[case_id]["recommended_action"] = req.new_action
-        return {"status": "modified", "case_id": case_id, "new_action": req.new_action, "details": item}
+        return {
+            "status": "modified",
+            "case_id": case_id,
+            "new_action": req.new_action,
+            "details": item,
+        }
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -316,11 +354,16 @@ def execute_approved_case(case_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail="Case not found in review queue")
     status = queue_item.get("status", "")
     if status not in ("approved", "modified"):
-        raise HTTPException(status_code=409, detail=f"Case status '{status}' is not executable. Must be 'approved' or 'modified'.")
+        raise HTTPException(
+            status_code=409,
+            detail=f"Case status '{status}' is not executable. Must be 'approved' or 'modified'.",
+        )
     audit = audit_logger.get_audit_record(case_id)
     if not audit:
         raise HTTPException(status_code=404, detail="Audit record not found")
-    action_type = queue_item.get("modified_action") or queue_item.get("ai_recommended_action", "no_action")
+    action_type = queue_item.get("modified_action") or queue_item.get(
+        "ai_recommended_action", "no_action"
+    )
     if case_id in _ACTIVE_CASES:
         _ACTIVE_CASES[case_id]["guardrail"] = "APPROVED"
         _ACTIVE_CASES[case_id]["decision"] = action_type
@@ -346,19 +389,21 @@ def get_audit_logs(limit: int = 50) -> dict[str, Any]:
     records_sorted = sorted(records, key=lambda r: r.timestamp, reverse=True)[:limit]
     result = []
     for r in records_sorted:
-        result.append({
-            "audit_id": r.audit_id,
-            "event_id": r.event_id,
-            "customer_id": r.customer_id,
-            "leakage_type": r.leakage_type.value,
-            "amount_at_risk": r.amount_at_risk,
-            "root_cause": r.root_cause.root_cause,
-            "recommended_action": r.decision.recommended_action.value,
-            "guardrail_status": r.guardrail.status.value,
-            "actual_recovery": r.action.actual_recovery if r.action else None,
-            "incremental_recovery": r.incremental_recovery_value,
-            "timestamp": r.timestamp.isoformat(),
-        })
+        result.append(
+            {
+                "audit_id": r.audit_id,
+                "event_id": r.event_id,
+                "customer_id": r.customer_id,
+                "leakage_type": r.leakage_type.value,
+                "amount_at_risk": r.amount_at_risk,
+                "root_cause": r.root_cause.root_cause,
+                "recommended_action": r.decision.recommended_action.value,
+                "guardrail_status": r.guardrail.status.value,
+                "actual_recovery": r.action.actual_recovery if r.action else None,
+                "incremental_recovery": r.incremental_recovery_value,
+                "timestamp": r.timestamp.isoformat(),
+            }
+        )
     return {"logs": result, "total": len(result)}
 
 
@@ -373,14 +418,20 @@ def get_system_status() -> dict[str, Any]:
     db_url = os.environ.get("DATABASE_URL", "")
     razorpay_key = os.environ.get("RAZORPAY_KEY_ID", "")
     is_real_key = razorpay_key and not razorpay_key.startswith("rzp_test_mock")
-    is_live = provider_adapter.client_wrapper.is_live if hasattr(provider_adapter, "client_wrapper") else False
+    is_live = (
+        provider_adapter.client_wrapper.is_live
+        if hasattr(provider_adapter, "client_wrapper")
+        else False
+    )
 
     all_records = audit_logger.get_all_records()
     return {
         "backend": "operational",
         "database": "connected" if db_url else "in_memory",
         "database_url_configured": bool(db_url),
-        "razorpay_mode": "live_mode" if is_live else ("test_mode" if is_real_key else "simulation_mode"),
+        "razorpay_mode": "live_mode"
+        if is_live
+        else ("test_mode" if is_real_key else "simulation_mode"),
         "razorpay_key_configured": is_real_key,
         "ai_model": "operational",
         "model_version": prob_model.model_version,
@@ -454,7 +505,9 @@ async def stripe_webhook(
     event_id = payload.get("id")
     event_type = payload.get("type")
     created = payload.get("created")
-    data_obj = payload.get("data", {}).get("object", {}) if isinstance(payload.get("data"), dict) else {}
+    data_obj = (
+        payload.get("data", {}).get("object", {}) if isinstance(payload.get("data"), dict) else {}
+    )
     payment_intent_id = data_obj.get("id") if isinstance(data_obj, dict) else None
 
     if not event_id or not event_type or not payment_intent_id:
@@ -463,11 +516,7 @@ async def stripe_webhook(
     if event_type == "payment_intent.payment_failed":
         failure = failure_from_payment_intent(data_obj)
         normalized = normalize_stripe_failure(failure)
-        occurred_at = (
-            datetime.fromtimestamp(created, tz=UTC)
-            if created
-            else datetime.now(UTC)
-        )
+        occurred_at = datetime.fromtimestamp(created, tz=UTC) if created else datetime.now(UTC)
         decision = policy.decide(normalized, attempts_completed=0, occurred_at=occurred_at)
         res = store.apply_failure(event_id, payment_intent_id, decision)
         return {

@@ -36,7 +36,8 @@ class RecoveryAuditLogger:
         audit_id = f"aud_{uuid.uuid4().hex[:12]}"
 
         # Calculate baseline expected recovery for counterfactual comparison
-        # Baseline strategy (fixed 3 retries): recovers ~35% of insufficient funds & temporary processing only
+        # Baseline strategy (fixed 3 retries): recovers ~35% of insufficient funds
+        # & temporary processing only
         if root_cause.category in ("insufficient_funds", "temporary_processing"):
             baseline_prob = 0.35
         else:

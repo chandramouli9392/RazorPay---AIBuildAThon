@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
 
 from ..models import (
     CandidateInterventionEvaluation,
@@ -61,7 +60,10 @@ class RevenueRecoveryDecisionAgent:
             return InterventionDecision(
                 decision_id=decision_id,
                 recommended_action=InterventionType.HUMAN_ESCALATION,
-                reasoning="Security/fraud flag detected. Automatic retries prohibited for merchant safety.",
+                reasoning=(
+                    "Security/fraud flag detected. "
+                    "Automatic retries prohibited for merchant safety."
+                ),
                 expected_net_recovery=0.0,
                 estimated_cost=50.0,
                 requires_human=True,
@@ -112,10 +114,16 @@ class RevenueRecoveryDecisionAgent:
                 ):
                     status = GuardrailStatus.REJECTED
                     rejection_reason = f"Action unsuitable for category '{category.value}'"
-            elif candidate_action == InterventionType.CHECKOUT_RECOVERY and event.leakage_type != LeakageType.CHECKOUT_ABANDONMENT:
+            elif (
+                candidate_action == InterventionType.CHECKOUT_RECOVERY
+                and event.leakage_type != LeakageType.CHECKOUT_ABANDONMENT
+            ):
                 status = GuardrailStatus.REJECTED
                 rejection_reason = "Checkout recovery applicable to checkout abandonment only"
-            elif candidate_action == InterventionType.INVOICE_REMINDER and event.leakage_type != LeakageType.OVERDUE_RECEIVABLE:
+            elif (
+                candidate_action == InterventionType.INVOICE_REMINDER
+                and event.leakage_type != LeakageType.OVERDUE_RECEIVABLE
+            ):
                 status = GuardrailStatus.REJECTED
                 rejection_reason = "Invoice reminder applicable to overdue receivables only"
 
@@ -158,18 +166,32 @@ class RevenueRecoveryDecisionAgent:
             or winning_candidate.status == GuardrailStatus.HUMAN_REVIEW
         )
 
+        net_val_fmt = f"₹{winning_candidate.net_expected_value:,.2f}"
+        prob_pct = int(winning_candidate.predicted_probability * 100)
+        exp_rec_fmt = f"₹{winning_candidate.expected_recovery_value:,.2f}"
         reasoning = (
-            f"Intervention '{best_action.value}' won candidate optimization with highest net value ₹{winning_candidate.net_expected_value:,.2f} "
-            f"(P_recovery = {int(winning_candidate.predicted_probability * 100)}%, Expected Recovery = ₹{winning_candidate.expected_recovery_value:,.2f})."
+            f"Intervention '{best_action.value}' won candidate optimization "
+            f"with highest net value {net_val_fmt} "
+            f"(P_recovery = {prob_pct}%, Expected Recovery = {exp_rec_fmt})."
         )
 
         personalized_copy = None
         if best_action == InterventionType.CHECKOUT_RECOVERY:
-            personalized_copy = f"Hi {context.name}, complete your ₹{amount:,.2f} purchase with 1 click: https://rzp.io/i/recov_{event.event_id[:6]}"
+            personalized_copy = (
+                f"Hi {context.name}, complete your ₹{amount:,.2f} purchase "
+                f"with 1 click: https://rzp.io/i/recov_{event.event_id[:6]}"
+            )
         elif best_action == InterventionType.INVOICE_REMINDER:
-            personalized_copy = f"Invoice payment of ₹{amount:,.2f} is past due. Pay securely via Razorpay: https://rzp.io/i/inv_{event.event_id[:6]}"
+            personalized_copy = (
+                f"Invoice payment of ₹{amount:,.2f} is past due. "
+                f"Pay securely via Razorpay: https://rzp.io/i/inv_{event.event_id[:6]}"
+            )
         elif best_action == InterventionType.UPDATE_PAYMENT_METHOD:
-            personalized_copy = f"Hi {context.name}, please update your card/UPI for your ₹{amount:,.2f} subscription: https://rzp.io/i/update_{context.customer_id[:6]}"
+            personalized_copy = (
+                f"Hi {context.name}, please update your card/UPI "
+                f"for your ₹{amount:,.2f} subscription: "
+                f"https://rzp.io/i/update_{context.customer_id[:6]}"
+            )
 
         return InterventionDecision(
             decision_id=decision_id,
