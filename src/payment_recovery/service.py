@@ -5,7 +5,9 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict
 
 from .ai.context import get_or_create_customer_context
@@ -33,6 +35,15 @@ from .stripe_adapter import failure_from_payment_intent, normalize_stripe_failur
 
 app = FastAPI(title="Razorpay AI Revenue Recovery Agent", version="2.0.0")
 
+# Enable CORS for seamless dashboard API communication across all deployment environments
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Cached benchmark result
 _LAST_BENCHMARK_RESULT: dict[str, Any] | None = None
 _LAST_BENCHMARK_TIME: str | None = None
@@ -50,8 +61,39 @@ review_queue = HumanReviewQueue()
 policy = RecoveryPolicy()
 store = RecoveryStore()
 
+
+def resolve_ui_path() -> Path:
+    """Resolve location of dashboard index.html across installed packages, cwd, and sources."""
+    candidates = [
+        Path(__file__).resolve().parent / "ui" / "index.html",
+        Path(__file__).resolve().parent / "static" / "index.html",
+        Path(__file__).resolve().parent / "templates" / "index.html",
+        Path.cwd() / "src" / "payment_recovery" / "ui" / "index.html",
+        (
+            Path.cwd()
+            / "payment_recovery_engine-main"
+            / "src"
+            / "payment_recovery"
+            / "ui"
+            / "index.html"
+        ),
+        Path.cwd() / "ui" / "index.html",
+        Path.cwd() / "static" / "index.html",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return Path(__file__).resolve().parent / "ui" / "index.html"
+
+
 # UI Template Path
-UI_PATH = Path(__file__).resolve().parent / "ui" / "index.html"
+UI_PATH = resolve_ui_path()
+UI_DIR = UI_PATH.parent if UI_PATH.parent.is_dir() else Path(__file__).resolve().parent / "ui"
+
+# Mount static files directories if available
+if UI_DIR.is_dir():
+    app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
+    app.mount("/static", StaticFiles(directory=str(UI_DIR), html=True), name="static")
 
 # In-memory case repository
 _ACTIVE_CASES: dict[str, dict[str, Any]] = {}
@@ -61,9 +103,14 @@ _ACTIVE_CASES: dict[str, dict[str, Any]] = {}
 @app.get("/dashboard", response_class=HTMLResponse)
 def get_dashboard() -> HTMLResponse:
     """Serve the Fintech Command Center Dashboard."""
-    if UI_PATH.is_file():
-        return HTMLResponse(content=UI_PATH.read_text(encoding="utf-8"))
-    return HTMLResponse(content="<h1>Razorpay AI Revenue Recovery Agent Dashboard</h1>")
+    ui_file = resolve_ui_path()
+    if ui_file.is_file():
+        return HTMLResponse(content=ui_file.read_text(encoding="utf-8"))
+    raise HTTPException(
+        status_code=500,
+        detail="Razorpay AI Recovery Dashboard UI template (index.html) could not be located.",
+    )
+
 
 
 @app.get("/health")

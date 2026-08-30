@@ -108,7 +108,9 @@ class RootCauseAnalysisAgent:
                 confidence=0.91,
                 evidence=evidence + ["Authentication step timed out or was abandoned by user"],
                 recoverability="HIGH",
-                recommended_next_step="Prompt customer to complete authentication via push notification/SMS",
+                recommended_next_step=(
+                    "Prompt customer to complete authentication via push notification/SMS"
+                ),
             )
 
         if category == FailureCategory.SECURITY_OR_FRAUD:
@@ -140,5 +142,7 @@ class RootCauseAnalysisAgent:
             confidence=0.70,
             evidence=evidence,
             recoverability=("MEDIUM" if context.historical_success_rate > 0.75 else "LOW"),
-            recommended_next_step="Perform single delayed retry or request manual operational review",
+            recommended_next_step=(
+                "Perform single delayed retry or request manual operational review"
+            ),
         )

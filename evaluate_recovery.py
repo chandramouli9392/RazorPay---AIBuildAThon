@@ -54,12 +54,18 @@ def main() -> None:
             "      RAZORPAY AI REVENUE RECOVERY AGENT — MULTI-SEED BENCHMARK EVALUATION", flush=True
         )
         print("=" * 85, flush=True)
+        tot_risk_val = res.total_revenue_at_risk
+        naive_pct = (res.naive_baseline_recovered_mean / tot_risk_val) * 100
+        rule_pct = (res.rule_baseline_recovered_mean / tot_risk_val) * 100
+        ai_pct = (res.ai_agent_recovered_mean / tot_risk_val) * 100
+
         print(
-            f"  Benchmark Records Analyzed:  {res.total_records:,} per seed (5 Random Seeds: {seeds})",
+            f"  Benchmark Records Analyzed:  {res.total_records:,} per seed "
+            f"(5 Random Seeds: {seeds})",
             flush=True,
         )
         print(
-            "  Evaluation Methodology:      Leak-Free Stochastic Environment Engine (No Oracle Access)",
+            "  Evaluation Methodology:      Leak-Free Stochastic Environment (No Oracle Access)",
             flush=True,
         )
         print("-" * 85, flush=True)
@@ -69,15 +75,19 @@ def main() -> None:
             flush=True,
         )
         print(
-            f"    Baseline 1 (Naive Fixed Retry):    INR {res.naive_baseline_recovered_mean:,.2f}  ({(res.naive_baseline_recovered_mean / res.total_revenue_at_risk) * 100:.1f}%)",
+            f"    Baseline 1 (Naive Fixed Retry):    "
+            f"INR {res.naive_baseline_recovered_mean:,.2f}  ({naive_pct:.1f}%)",
             flush=True,
         )
         print(
-            f"    Baseline 2 (Standard Rule Policy): INR {res.rule_baseline_recovered_mean:,.2f}  ({(res.rule_baseline_recovered_mean / res.total_revenue_at_risk) * 100:.1f}%)",
+            f"    Baseline 2 (Standard Rule Policy): "
+            f"INR {res.rule_baseline_recovered_mean:,.2f}  ({rule_pct:.1f}%)",
             flush=True,
         )
         print(
-            f"    AI Revenue Recovery Agent:         INR {res.ai_agent_recovered_mean:,.2f} ± {res.ai_agent_recovered_std:,.2f}  ({(res.ai_agent_recovered_mean / res.total_revenue_at_risk) * 100:.1f}%)",
+            f"    AI Revenue Recovery Agent:         "
+            f"INR {res.ai_agent_recovered_mean:,.2f} ± {res.ai_agent_recovered_std:,.2f}  "
+            f"({ai_pct:.1f}%)",
             flush=True,
         )
         print("-" * 85, flush=True)
@@ -87,7 +97,8 @@ def main() -> None:
             flush=True,
         )
         print(
-            f"    AI Recovery Uplift vs Rule Base:   +{res.recovery_uplift_percent_mean:.1f}% Net Uplift",
+            f"    AI Recovery Uplift vs Rule Base:   +{res.recovery_uplift_percent_mean:.1f}% "
+            f"Net Uplift",
             flush=True,
         )
         print("-" * 85, flush=True)
@@ -105,6 +116,9 @@ def main() -> None:
             dataset_size=args.records, seed=42
         )
 
+        n_pct = (naive_rec / tot_risk) * 100
+        r_pct = (rule_rec / tot_risk) * 100
+
         print("\n" + "=" * 85, flush=True)
         print(
             "      RAZORPAY AI REVENUE RECOVERY AGENT — BENCHMARK EVALUATION (SEED 42)", flush=True
@@ -116,15 +130,16 @@ def main() -> None:
         print("  THREE-TIER STRATEGY COMPARISON:", flush=True)
         print(f"    Total Revenue At Risk:             INR {tot_risk:,.2f}", flush=True)
         print(
-            f"    Baseline 1 (Naive Fixed Retry):    INR {naive_rec:,.2f}  ({(naive_rec / tot_risk) * 100:.1f}%)",
+            f"    Baseline 1 (Naive Fixed Retry):    INR {naive_rec:,.2f}  ({n_pct:.1f}%)",
             flush=True,
         )
         print(
-            f"    Baseline 2 (Standard Rule Policy): INR {rule_rec:,.2f}  ({(rule_rec / tot_risk) * 100:.1f}%)",
+            f"    Baseline 2 (Standard Rule Policy): INR {rule_rec:,.2f}  ({r_pct:.1f}%)",
             flush=True,
         )
         print(
-            f"    AI Revenue Recovery Agent:         INR {metrics.recovered_inr:,.2f}  ({metrics.recovery_rate_percent:.1f}%)",
+            f"    AI Revenue Recovery Agent:         INR {metrics.recovered_inr:,.2f}  "
+            f"({metrics.recovery_rate_percent:.1f}%)",
             flush=True,
         )
         print("-" * 85, flush=True)
@@ -134,7 +149,8 @@ def main() -> None:
             flush=True,
         )
         print(
-            f"    AI Recovery Uplift vs Rule Base:   +{metrics.uplift_vs_rule_percent:.1f}% Net Uplift",
+            f"    AI Recovery Uplift vs Rule Base:   +{metrics.uplift_vs_rule_percent:.1f}% "
+            f"Net Uplift",
             flush=True,
         )
         print("-" * 85, flush=True)
@@ -145,7 +161,8 @@ def main() -> None:
         print(f"    Intervention Recall:               {metrics.recall_percent:.1f}%", flush=True)
         print(f"    F1 Score:                          {metrics.f1_score_percent:.1f}%", flush=True)
         print(
-            f"    Unnecessary Retries / Fatigue:     {metrics.unnecessary_interventions_percent:.1f}%",
+            f"    Unnecessary Retries / Fatigue:     "
+            f"{metrics.unnecessary_interventions_percent:.1f}%",
             flush=True,
         )
         print(

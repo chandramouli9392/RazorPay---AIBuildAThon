@@ -45,7 +45,7 @@ def test_zero_target_leakage_in_features():
 
 
 def test_optimizer_selects_action_before_environment_draw():
-    """Verify optimizer evaluates candidates strictly prior to stochastic environment outcome generation."""
+    """Verify optimizer evaluates candidates strictly prior to stochastic environment draws."""
     agent = RevenueRecoveryDecisionAgent()
     env = StochasticRecoveryEnvironment(seed=42)
 

@@ -23,8 +23,37 @@ dev = [
   "ruff>=0.4.0",
 ]
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+payment_recovery = [
+  "ui/*",
+  "ui/**/*",
+  "static/*",
+  "static/**/*",
+  "templates/*",
+  "templates/**/*",
+]
+"*" = [
+  "*.html",
+  "*.css",
+  "*.js",
+  "*.svg",
+  "*.png",
+  "*.jpg",
+  "*.jpeg",
+  "*.gif",
+  "*.ico",
+  "*.json",
+  "*.woff",
+  "*.woff2",
+  "*.ttf",
+]
+
 
 [tool.pytest.ini_options]
 addopts = "-q"

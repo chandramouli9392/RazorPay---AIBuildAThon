@@ -4,7 +4,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 
 FROM base AS test
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md MANIFEST.in* ./
 COPY src ./src
 COPY tests ./tests
 COPY database ./database
@@ -16,7 +16,7 @@ CMD ["python", "-m", "pytest"]
 
 FROM base AS runtime
 RUN groupadd --system recovery && useradd --system --gid recovery recovery
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md MANIFEST.in* ./
 COPY src ./src
 RUN python -m pip install --no-cache-dir --upgrade pip \
     && python -m pip install --no-cache-dir .

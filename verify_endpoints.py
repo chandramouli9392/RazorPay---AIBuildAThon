@@ -31,8 +31,11 @@ def main():
 
     # 1. GET /
     dashboard = test_get("/")
-    assert b"AI Revenue Recovery Agent" in dashboard
-    print("  -> Dashboard HTML loaded successfully.")
+    assert b"Razorpay AI Revenue Recovery Agent" in dashboard
+    assert len(dashboard) > 50000
+    assert b"app-layout" in dashboard
+    assert b"chartComparison" in dashboard
+    print("  -> Full Dashboard UI HTML loaded successfully (>50KB).")
 
     # 2. GET /docs
     docs = test_get("/docs")
@@ -50,14 +53,16 @@ def main():
     assert "revenue_at_risk" in metrics
     assert "recovery_uplift_percent" in metrics
     print(
-        f"  -> Metrics: Revenue At Risk = INR {metrics['revenue_at_risk']:,}, Uplift = {metrics['recovery_uplift_percent']}%"
+        f"  -> Metrics: Risk = INR {metrics['revenue_at_risk']:,}, "
+        f"Uplift = {metrics['recovery_uplift_percent']}%"
     )
 
     # 5. POST /demo/simulate
     sim = test_post("/demo/simulate")
     assert sim["status"] == "success"
     print(
-        f"  -> Demo Simulation: Revenue At Risk = INR {sim['revenue_at_risk']:,}, AI Recovered = INR {sim['actual_ai_recovered']:,}"
+        f"  -> Demo Simulation: Risk = INR {sim['revenue_at_risk']:,}, "
+        f"AI Recovered = INR {sim['actual_ai_recovered']:,}"
     )
 
     # 6. GET /recovery/cases
@@ -68,7 +73,8 @@ def main():
     eval_res = test_post("/evaluation/run")
     assert eval_res["total_records"] == 5000
     print(
-        f"  -> 5,000 Event Benchmark Run: F1 Score = {eval_res['f1_score_percent']}%, AI Recovered = INR {eval_res['ai_recovered_inr']:,}"
+        f"  -> 5k Benchmark: F1 = {eval_res['f1_score_percent']}%, "
+        f"AI Recovered = INR {eval_res['ai_recovered_inr']:,}"
     )
 
     print("=" * 60)
