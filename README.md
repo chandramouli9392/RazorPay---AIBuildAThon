@@ -1,62 +1,261 @@
+<div align="center">
+
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=30&duration=3500&pause=1000&color=3395FF&center=true&vCenter=true&width=850&lines=⚡+Razorpay+AI+Revenue+Recovery+Agent;🤖+AI-Powered+Revenue+Intelligence;💰+Detect.+Predict.+Recover." alt="Typing SVG" />
+
+<br/>
+
+<img src="https://img.shields.io/badge/Razorpay-AI%20Build%20A%20Thon-3395FF?style=for-the-badge&logo=razorpay&logoColor=white" />
+
+<img src="https://img.shields.io/badge/Track-03%20AI%20Revenue%20Recovery-7B61FF?style=for-the-badge" />
+
+<img src="https://img.shields.io/badge/Status-Hackathon%20Ready-00C853?style=for-the-badge" />
+
+</div>
+
 # Razorpay AI Revenue Recovery Agent
 
-> **Razorpay Hackathon — Track 03: AI Revenue Recovery**
->
-> An explainable autonomous revenue recovery system that identifies revenue leakage, diagnoses its root cause, predicts recovery probability, optimizes candidate interventions, enforces strict deterministic guardrails, executes interventions safely via Razorpay test mode, and measures incremental revenue recovered over a baseline.
+### An explainable AI-powered system for detecting revenue leakage and intelligently recovering lost payment revenue.
+
+> **Razorpay AI Build A Thon · Track 03**
 
 ---
 
-## Executive Summary
+## Overview
 
-Traditional payment retry engines rely on fixed, naive cron schedules that blindly re-attempt failed payments regardless of customer history, decline type, or financial exposure. This leads to customer fatigue, unnecessary fees, and lost revenue.
+Payment failures, abandoned checkouts, failed subscriptions, and overdue receivables can lead to significant revenue leakage.
 
-**AI Revenue Recovery Agent** transforms payment failure handling into an intelligent, explainable, closed-loop revenue optimization engine.
+Traditional recovery systems usually rely on fixed rules such as retrying a payment after a predefined interval. This project takes a more intelligent approach.
 
-### The Closed-Loop Recovery Flow
+The **Razorpay AI Revenue Recovery Agent** analyzes revenue leakage events, identifies possible root causes, predicts recovery probability, evaluates multiple interventions, and selects an optimal recovery strategy while applying deterministic safety guardrails.
+
+### Recovery Flow
+
+**Detect → Analyze → Predict → Decide → Protect → Recover**
+
+---
+
+## Key Features
+
+### AI-Powered Recovery Decisions
+
+- Detects revenue leakage events
+- Performs root cause analysis
+- Predicts recovery probability using ML
+- Calculates expected recovery value
+- Evaluates multiple candidate interventions
+- Selects the optimal intervention
+
+### Explainable AI
+
+Every recovery decision can be inspected through an AI decision matrix containing:
+
+- Customer context
+- Revenue event details
+- Root cause analysis
+- Recovery probability
+- Candidate interventions
+- Cost and friction scores
+- Expected recovery value
+- Selected intervention
+- Guardrail evaluation
+
+### Safety Guardrails
+
+The system includes deterministic controls such as:
+
+- Retry limits
+- Contact frequency protection
+- Duplicate action prevention
+- High-value transaction escalation
+- Risk and fraud checks
+- Human approval workflows
+
+### Human Review Queue
+
+High-risk or sensitive cases can be routed to a human reviewer.
+
+Reviewers can:
+
+- Approve an intervention
+- Reject an intervention
+- Modify the selected action
+- Execute approved recovery actions
+- Review the complete AI decision matrix
+
+---
+
+## Dashboard
+
+The application includes a real-time dashboard showing:
+
+- **Revenue At Risk**
+- **Expected Recoverable Revenue**
+- **Actual Revenue Recovered**
+- **Incremental Revenue vs Rule-Based Policy**
+- **Recovery Rate**
+- **Human Review Queue**
+- **AI vs Baseline Benchmark**
+- **Revenue Leakage Category Breakdown**
+- **Active Recovery Cases**
+
+---
+
+## Technology Stack
+
+### Backend
+
+- Python
+- FastAPI
+- PostgreSQL
+
+### AI and Decision Engine
+
+- Machine Learning
+- Recovery Probability Prediction
+- Intervention Optimization
+- Explainable Decision Scoring
+
+### Infrastructure
+
+- Docker
+- Docker Compose
+- GitHub Actions
+- Render
+
+### Testing and Code Quality
+
+- Pytest
+- Ruff
+
+---
+
+## Project Structure
 
 ```text
-REVENUE AT RISK
-      ↓
-DETECTION (Failed Payment, Subscription Halted, Abandoned Checkout, Overdue Receivable)
-      ↓
-ROOT CAUSE DIAGNOSIS (Structured System Evidence & Category Normalization)
-      ↓
-RECOVERY PROBABILITY MODEL P(recovery | customer, event, intervention)
-      ↓
-CANDIDATE INTERVENTION OPTIMIZATION MATRIX (Evaluates 9 Candidate Actions for Max Net Value)
-      ↓
-DETERMINISTIC GUARDRAIL ENGINE (Retry Budgets, Monetary Exposure Caps, Frequency Limits)
-      ↓ ─── [Policy Flag / Exposure > ₹50k] ──→ HUMAN REVIEW QUEUE
-      ↓ [APPROVED]
-CONTROLLED EXECUTION LAYER (Razorpay Test Mode / Simulation Adapter)
-      ↓
-MEASURED OUTCOME & COUNTERFACTUAL RECOVERY LEDGER (Baseline vs AI ₹ Recovered)
-      ↓
-EXPLAINABLE IMMUTABLE AUDIT TRAIL & FINTECH COMMAND CENTER UI
-```
+RazorPay---AIBuildAThon/
+│
+├── .github/                 # GitHub Actions workflows
+├── database/                # Database configuration
+├── docs/                    # Documentation
+├── email-templates/         # Recovery communication templates
+├── n8n-workflows/           # Automation workflows
+├── src/                     # Application source code
+├── tests/                   # Automated tests
+│
+├── Dockerfile
+├── docker-compose.yml
+├── pyproject.toml
+├── evaluate_recovery.py     # Benchmark evaluation
+├── verify_endpoints.py      # API verification
+├── render.yaml              # Render deployment configuration
+├── start.sh                 # Production startup script
+│
+└── README.md
+How It Works
+Payment / Revenue Event
+          ↓
+Revenue Leakage Detection
+          ↓
+Root Cause Analysis
+          ↓
+ML Recovery Probability Prediction
+          ↓
+Evaluate Candidate Interventions
+          ↓
+Safety Guardrail Evaluation
+          ↓
+   ┌───────────────┐
+   │               │
+Auto Approval   Human Review
+   │               │
+   └───────┬───────┘
+           ↓
+Controlled Recovery Action
+           ↓
+Revenue Outcome + Audit Trail
+Candidate Interventions
 
----
+The AI Agent evaluates multiple recovery strategies depending on the type and context of the event.
 
-## Measured Benchmark Results
+Examples include:
 
-Run the reproducible leak-free offline benchmark script across **5,000 synthetic revenue events per seed** (70/15/15 Train/Validation/Test Split, 5 Random Seeds: 42, 123, 456, 789, 2026):
+Update payment method
+Smart payment retry
+Payment reminder
+Invoice reminder
+Checkout recovery
+Delayed retry
+Alternative recovery strategy
+Human escalation
+No action
 
-```bash
-python evaluate_recovery.py --multiseed
-```
+The final decision considers recovery probability, expected revenue, intervention cost, customer friction, risk, and safety constraints.
 
-### Audit-Proof 3-Tier Benchmark Impact Summary (5 Seeds, 5,000 Events / Seed)
+Running Locally
+Clone the repository
+git clone https://github.com/chandramouli9392/RazorPay---AIBuildAThon.git
+cd RazorPay---AIBuildAThon
+Create a virtual environment
 
-| Metric | Baseline 1 (Naive Retry) | Baseline 2 (Rule Policy) | AI Revenue Recovery Agent | Net Incremental Impact (vs Rule Base) |
-|---|---|---|---|---|
-| **Total Revenue At Risk** | INR 96,974,535.00 | INR 96,974,535.00 | **INR 96,974,535.00** | — |
-| **Actual Revenue Recovered (Mean)** | INR 20,061,781.20 (20.7%) | INR 21,646,013.40 (22.3%) | **INR 66,513,110.00 (68.6%)** | **+INR 44,867,096.60** |
-| **Standard Deviation Across Seeds** | ± INR 142,500.00 | ± INR 165,200.00 | **± INR 3,045,561.93** | Statistically Significant |
-| **Recovery Rate (%)** | 20.7% | 22.3% | **68.6% ± 3.1%** | **+46.3% Recovery Rate** |
-| **Relative Uplift vs Baseline 2** | -7.3% | Baseline | **+207.7% Net Uplift** | **3.08x Recovery Efficiency** |
-| **Intervention Precision** | 20.7% | 48.5% | **69.7%** | **+21.2% Accuracy** |
-| **Intervention Recall** | 31.2% | 42.1% | **70.6%** | **+28.5% Capture** |
-| **F1-Score / ROC-AUC** | N/A | N/A | **70.1% F1 / 0.912 ROC-AUC** | High Calibrated Discrimination |
+Windows
+
+python -m venv .venv
+.venv\Scripts\activate
+
+Linux/macOS
+
+python -m venv .venv
+source .venv/bin/activate
+Install dependencies
+python -m pip install --upgrade pip
+pip install -e ".[dev]"
+Running Tests
+python -m pytest
+
+Run code quality checks:
+
+ruff check .
+Running with Docker
+docker compose up --build
+
+This starts the application and PostgreSQL services.
+
+Benchmark Evaluation
+
+Run the recovery benchmark:
+
+python evaluate_recovery.py
+
+The benchmark evaluates AI-driven recovery strategies against baseline policies.
+
+Key metrics include:
+
+Revenue at Risk
+Expected Recoverable Revenue
+Actual Revenue Recovered
+Recovery Rate
+Incremental Revenue
+AI vs Rule-Based Performance
+Responsible AI
+
+The project is designed to keep recovery decisions explainable and controlled.
+
+The evaluation and decision pipeline is designed to avoid:
+
+Target leakage
+Oracle action selection
+Circular ground truth
+Fake recovery outcomes
+
+High-risk actions can be routed through human review and deterministic safety guardrails.
+
+Built For
+
+Razorpay AI Build A Thon
+
+Razorpay AI Revenue Recovery Agent
+
+Detect revenue leakage. Understand the cause. Predict recovery. Take the right action.| **F1-Score / ROC-AUC** | N/A | N/A | **70.1% F1 / 0.912 ROC-AUC** | High Calibrated Discrimination |
 | **Unnecessary Retries / Customer Fatigue** | High (100% blind) | Medium (35.2%) | **18.5%** | **-47.4% Customer Friction** |
 | **Guardrail Policy Blocks (Mean)** | 0 | 0 | **1,103 Unsafe Retries Blocked** | Full Operational Safety |
 | **Human Escalation Flagged (Mean)** | 0 | 0 | **985 High-Value Cases Flagged** | Zero Financial Exposure Risk |
